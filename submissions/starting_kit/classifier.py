@@ -1,22 +1,28 @@
-from __future__ import division
-from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import make_pipeline
+from sklearn.utils import resample
+import pandas as pd
+import numpy as np
 
 
 class Classifier(BaseEstimator):
+    
     def __init__(self):
-        self.model = make_pipeline(StandardScaler(), LogisticRegression())
-
+        self.model = LogisticRegression()
     def fit(self, X, y):
-        clf_RF = RandomForestClassifier(n_estimators=50, criterion='gini', max_depth=10,
-                                min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0,
-                                max_features='auto', max_leaf_nodes=None, 
-                                bootstrap=True, oob_score=False, n_jobs=1, 
-                                random_state=125, verbose=1, warm_start=False, class_weight=None)
-        self.model.fit(X, y)
+        X = pd.DataFrame(X)
+        y.reset_index(drop=True, inplace=True)
+        df = pd.concat([X, y], axis = 1)
+        df_minority = df[df.CLASS==True].copy()
+        df_minority_upsampled = resample(df_minority, 
+                                 replace=True,    
+                                 n_samples=3000,    
+                                 random_state=123)
+        df = pd.concat([df, df_minority_upsampled])
+        y = df['CLASS'].copy()
+        X = df.drop('CLASS',axis = 1).copy()
+        self.model.fit(np.array(X), np.array(y))
 
     def predict_proba(self, X):
-        return self.model.predict_proba(X)
+        proba = self.model.predict_proba(np.array(X))
+        return proba
